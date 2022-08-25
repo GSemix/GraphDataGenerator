@@ -9,7 +9,9 @@ nameFileVertex = "Vertex.json"
 nameFileEdges = "Edges.json"
 fromHex = {
     '_x7C_': '|',
-    '_x26_': '&'
+    '_x26_': '&',
+    '_x5F_': '_',
+    '_x23_': '#'
 }
 
 housing = input("[housing] >> ")
@@ -35,13 +37,13 @@ def clearId(id):
             id = id.replace(a, fromHex[a])
             
         return id
-        
+
     return ''
 
 def convertIdToName(id):
     if isinstance(id, str) and id != '':
         return id.split('_')[0]
-        
+
     return ''
 
 def convertIdToNeighboor(id):
@@ -61,7 +63,7 @@ def clearContent(content):
 
 def getContentSVG(fileName):
     file = minidom.parse(fileName)
-    content = [Elem(path.getAttribute('id'), path.getAttribute('cx'), path.getAttribute('cy')) for path in file.getElementsByTagName('circle') if path.getAttribute('id') != '']
+    content = [Elem(path.getAttribute('id'), path.getAttribute('cx'), path.getAttribute('cy')) for path in file.getElementsByTagName('circle') if path.getAttribute('id') != '' and path.getAttribute('id')[0] == '_']
     file.unlink()
     
     return clearContent(content)
