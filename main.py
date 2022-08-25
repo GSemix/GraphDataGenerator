@@ -3,10 +3,12 @@
 
 from sys import argv
 from json import dumps
+from json import load
 from xml.dom import minidom
 
 nameFileVertex = "Vertex.json"
 nameFileEdges = "Edges.json"
+nameFileHexSymbols = "hexSymbols.json"
 fromHex = {
     '_x7C_': '|',
     '_x26_': '&',
@@ -19,8 +21,6 @@ floor = input("[floor] >> ")
 
 class Elem:
     def __init__(self, id, x, y):
-        id = clearId(id)
-        
         self.name = convertIdToName(id)
         self.housing = housing
         self.floor = floor
@@ -28,13 +28,21 @@ class Elem:
         self.x = str(round(float(x), 1))
         self.y = str(round(float(y), 1))
         
+def getHexSymbols():
+    with open(nameFileHexSymbols, 'r') as file:
+        return load(file)
+        
 def clearId(id):
     if isinstance(id, str) and id != '':
-        if id[0] == '_':
-            id = id[1:]
-            
         for a in fromHex.keys():
             id = id.replace(a, fromHex[a])
+            
+        hexSymbols = getHexSymbols()
+        
+        for a in hexSymbols.keys():
+            if a in id:
+                print("#\n#\t[!] >> Be careful! Hex detected with [id] ->  {}  <-\n#".format(id))
+                return id
             
         return id
 
@@ -42,31 +50,44 @@ def clearId(id):
 
 def convertIdToName(id):
     if isinstance(id, str) and id != '':
-        return id.split('_')[0]
+        return id.split('_')[0][1:]
+        
+    print("[-] >> Error in convertIdToName")
 
     return ''
 
 def convertIdToNeighboor(id):
     if isinstance(id, str) and id != '' and len(id.split('_')) >= 2:
         return [neighbor for neighbor in id.split('_')[1:] if neighbor != '']
+        
+    print("[-] >> Error in convertIdToNeighboor")
             
     return []
 
-def clearContent(content):
-    filteredContent = list(filter(lambda elem: elem.name != '' and elem.neighbors != [], content))
-    
-    for elem in content:
-        if elem not in filteredContent:
-            print("\t[-] >> Error with [name]\t->  {}  <-".format(elem.name))
-
-    return filteredContent
-
 def getContentSVG(fileName):
     file = minidom.parse(fileName)
-    content = [Elem(path.getAttribute('id'), path.getAttribute('cx'), path.getAttribute('cy')) for path in file.getElementsByTagName('circle') if path.getAttribute('id') != '' and path.getAttribute('id')[0] == '_']
+    content = []
+    count = 0
+    
+    for path in file.getElementsByTagName('circle'):
+        unhexedId = clearId(path.getAttribute('id'))
+    
+        if isValidId(unhexedId):
+            content.append(Elem(unhexedId, path.getAttribute('cx'), path.getAttribute('cy')))
+        else:
+            print("\t[-] >> Error with [id]\t->  {}  <-".format(unhexedId))
+            
+        count += 1
+
     file.unlink()
     
-    return clearContent(content)
+    return (content, count)
+    
+def isValidId(id):
+    if id == '' or id[0] != '#' or len(id.split('_')) == 1 or ('' in id.split('_')):
+        return False
+
+    return True
 
 def getOneVertexJSON(name, housing, floor, x, y):
     return {
@@ -76,42 +97,46 @@ def getOneVertexJSON(name, housing, floor, x, y):
             "y": y
             }
     
-def getAllVertexJSON(contentSVG):
+def getAllVertexJSON(contentSVG, count):
     content = {}
     
     for a in contentSVG:
         content['{}'.format(a.name)] = getOneVertexJSON(a.name, a.housing, a.floor, a.x, a.y)
     
-    print("[+] >> Successfuly added {} vertex".format(len(content.keys())))
+    print("[+] >> Successfuly added {} of {} vertex".format(len(content.keys()), count))
           
     return content
           
 def writeVertexJSON(content):
-    with open(nameFileVertex, 'w', encoding= 'utf-8') as file:
+    with open(nameFileVertex, 'w', encoding = 'utf-8') as file:
         file.write(dumps(content, sort_keys = False, indent = 4, ensure_ascii = False) + '\n')
         print("[+] >> Vertex saved in {}".format(nameFileVertex))
     
-def getAllEdgeJSON(contentSVG):
+def getAllEdgeJSON(contentSVG, count):
     content = {}
     
     for a in contentSVG:
         content['{}'.format(a.name)] = a.neighbors
     
-    print("[+] >> Successfuly added {} edges".format(len(content.keys())))
+    print("[+] >> Successfuly added {} of {} edges".format(len(content.keys()), count))
           
     return content
           
 def writeEdgeJSON(content):
-    with open(nameFileEdges, 'w', encoding= 'utf-8') as file:
+    with open(nameFileEdges, 'w', encoding = 'utf-8') as file:
         file.write(dumps(content, sort_keys = False, indent = 4, ensure_ascii = False) + '\n')
         print("[+] >> Edges saved in {}".format(nameFileEdges))
           
 if __name__ == '__main__':
+    print("\n### Warnings and Errors ###\n")
+
     nameFileSVG = argv[1]
-    contentSVG = getContentSVG(nameFileSVG)
+    contentSVG, count = getContentSVG(nameFileSVG)
     
-    content = getAllVertexJSON(contentSVG)
+    print("\n### Information ###\n")
+    
+    content = getAllVertexJSON(contentSVG, count)
     writeVertexJSON(content)
     
-    content = getAllEdgeJSON(contentSVG)
+    content = getAllEdgeJSON(contentSVG, count)
     writeEdgeJSON(content)
