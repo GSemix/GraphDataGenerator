@@ -139,7 +139,7 @@ def Analyse(content):
     for a in content.keys():
         for b in content[a]:
             if b not in content.keys():
-                print("[!] >> '{}' has unknown neighboor '{}'".format(a, b))
+                print("[?] >> '{}' has unknown neighboor '{}'".format(a, b))
           
 if __name__ == '__main__':
     fromHex = getPermitedHexSymbols()
