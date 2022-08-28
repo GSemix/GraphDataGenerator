@@ -46,4 +46,4 @@
               
 Запуск:  
   
-python3 main.py wayToFileSVG  
+python3 generateOnText.py wayToFileSVG  
