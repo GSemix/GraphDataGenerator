@@ -69,7 +69,7 @@ def getNameOnCoordinates(vertex, x1, y1, x2, y2):
         
 def convertIdToName(id):
     if isinstance(id, str) and id != '':
-        return id[1:]
+        return id.replace('#', '', 1)
         
     print("[-] >> Error in convertIdToName")
 
@@ -84,6 +84,13 @@ def isValidId(id):
         return False
 
     return True
+    
+def isTwinInVertex(name, vertexList):
+    for a in vertexList:
+        if a.name == name:
+            return True
+            
+    return False
         
 def getContentSVG(fileName, isSetRadius):
     global countErrors
@@ -99,6 +106,11 @@ def getContentSVG(fileName, isSetRadius):
     
     for path in file.getElementsByTagName('circle'):
         unhexedId = clearId(path.getAttribute('id'))
+        
+        for a in getHexSymbols().keys():
+            if a in unhexedId:
+                countWarnings += 1
+                print("#\n#\t[!] >> Be careful! HEX detected with [id] ->  {}  <-\n#".format(unhexedId))
     
         if isValidId(unhexedId):
             if unhexedId[:5] != '#edge' and unhexedId[:3] != '#0#':
@@ -109,32 +121,40 @@ def getContentSVG(fileName, isSetRadius):
                 if isSetRadius:
                     radius = float(path.getAttribute('r'))
                     isSetRadius = False
-                            
-                vertexList.append(VertexElem(unhexedId, path.getAttribute('cx'), path.getAttribute('cy')))
-                countValideVertexCircles += 1
+                    
+                for a in unhexedId.split('#')[1:]:
+                    if isTwinInVertex(a, vertexList) == False:
+                        vertexList.append(VertexElem(a, path.getAttribute('cx'), path.getAttribute('cy')))
+                        
+                        if vertexList[-1].name == '':
+                            vertexList.remove(vertexList[-1])
+                        else:
+                            countValideVertexCircles += 1
+                    else:
+                         print("\t[-] >> Error! Detected Twin CIRCLE [id]\t->  {}  <-".format(unhexedId))
         else:
             countErrors += 1
             print("\t[-] >> Error with CIRCLE [id]\t->  {}  <-".format(unhexedId))
             
     for path in file.getElementsByTagName('circle'):
         unhexedId = clearId(path.getAttribute('id'))
-    
+            
         if isValidId(unhexedId) and unhexedId[:3] == '#0#':
+            
             for a in vertexList:
                 if a.name == unhexedId[3:]:
                     if a.x0 == None and a.y0 == None:
                         a.x0 = path.getAttribute('cx')
                         a.y0 = path.getAttribute('cy')
                     else:
-                        print("\t[-] >> Error! ZeroVertex already recorded [id]\t->  {}  <-".format(unhexedId))
+                        print("\t[-] >> Error! ZeroVertex already recorded [id]\t->  {}  <-".format(unhexedId[3:]))
                         countErrors += 1
                         
                     countValideZeroCircles += 1
-                        
                     break
                     
                 if a == vertexList[-1]:
-                    print("\t[-] >> Error! Vertex not found with ZeroVertex [id]\t->  {}  <-".format(unhexedId))
+                    print("\t[-] >> Error! Vertex not found with ZeroVertex [id]\t->  {}  <-".format(unhexedId[3:]))
                     countErrors += 1
         
     for path in file.getElementsByTagName('circle'):
@@ -150,6 +170,11 @@ def getContentSVG(fileName, isSetRadius):
             
     for path in file.getElementsByTagName('line'):
         unhexedId = clearId(path.getAttribute('id'))
+        
+        for a in getHexSymbols().keys():
+            if a in unhexedId:
+                countWarnings += 1
+                print("#\n#\t[!] >> Be careful! HEX detected with [id] ->  {}  <-\n#".format(unhexedId))
     
         if isValidId(unhexedId) and unhexedId[:5] == '#edge':
             edgeList.append(EdgeElem(path.getAttribute('x1'), path.getAttribute('y1'), path.getAttribute('x2'), path.getAttribute('y2'), vertexList))
@@ -163,6 +188,13 @@ def getContentSVG(fileName, isSetRadius):
             print("\t[-] >> Error with LINE [id]\t->  {}  <-".format(unhexedId))
 
     file.unlink()
+    
+    print()
+    
+    for a in vertexList:
+        if a.x0 == None or a.y0 == None:
+            print("[?] >> Missing ZeroVertex with [id]\t->  {}  <-".format(a.name))
+            countWarnings += 1
 
     print("\n$$$$$\n$$$$$\t[+] >> set Radius = {}\n$$$$$\n$$$$$\t[+] >> Detected {} valid VERTEX<CIRCLE>\n$$$$$\t[+] >> Detected {} valid EDGE<LINE>\n$$$$$\t[+] >> Detected {} valid EDGE<CIRCLE>\n$$$$$\t[+] >> Detected {} valid ZeroVertex\n$$$$$".format(radius, countValideVertexCircles, countValideEdgeLines, countValideEdgeCircles, countValideZeroCircles))
     
@@ -178,18 +210,9 @@ def isStringFloat(text):
     return False
     
 def clearId(id):
-    global countWarnings
-
     if isinstance(id, str) and id != '':
         for a in fromHex.keys():
             id = id.replace(a, fromHex[a])
-        
-        for a in getHexSymbols().keys():
-            if a in id:
-                countWarnings += 1
-                print("#\n#\t[!] >> Be careful! HEX detected with [id] ->  {}  <-\n#".format(id))
-                
-                return id
             
         return id
 
